@@ -54,6 +54,16 @@ public class FileOccurrence {
 		return fullyMatched;
 	}
 	
+	public FileOccurrence getExactOccurrences(Integer numberOfOccurrences) {
+		FileOccurrence fullyMatched = new FileOccurrence();
+		for(String filename: index.keySet()) {
+			if(getTotalNumberOfOccurrences(filename).intValue() == numberOfOccurrences.intValue()) {
+				fullyMatched.put(filename, index.get(filename));
+			}
+		}
+		return fullyMatched;
+	}
+	
 	// returns the biggest number of occurrences between all files
 	public Integer getMaximumNumberOfOccurrences() {
 		Integer maximum = 0;
@@ -71,13 +81,17 @@ public class FileOccurrence {
 	// returns those files that have the highest number of matched terms
 	public FileOccurrence getBestMatched() {
 		
-		Integer numberOfMatches = getMaximumNumberOfOccurrences();
-		return getExactlyMatched(numberOfMatches);
+		Integer numberOfOccurrences = getMaximumNumberOfOccurrences();
+		return getExactOccurrences(numberOfOccurrences);
 	}
 	
 	public void listItems() {
+		System.out.println("Találatok");
 		for(String filename: index.keySet()) {
-			System.out.println(filename + ": " + getTotalNumberOfOccurrences(filename));
+			System.out.println(filename + "\t" + getTotalNumberOfOccurrences(filename));
+			for(String term: index.get(filename).keySet()) {
+				System.out.println("\t" + term + "\t" + index.get(filename).get(term));
+			}
 		}
 	}
 }

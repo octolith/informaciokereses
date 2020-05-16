@@ -21,13 +21,19 @@ public class Program {
 		}
 		
 		TermsIndex termsIndex = indexer.getTermsIndex();
+		//termsIndex.listAllItems();
 			
 		ArrayList<String> terms = new ArrayList<String>();
-		terms.add("Sony");
-		terms.add("készülék");
+		terms.add("monitor");
+		terms.add("konfigurÃ¡ciÃ³");
+		
+		termsIndex.listItems(terms);
+		termsIndex.listAllItemsByOccurrence();
 		
 		FileOccurrence exactOccurrences = termsIndex.searchExact(terms);
+		exactOccurrences.listItems();
 		
 		FileOccurrence expandedOccurrences = termsIndex.searchWithSemanticExpansion(terms);
+		expandedOccurrences.listItems();
 	}
 }

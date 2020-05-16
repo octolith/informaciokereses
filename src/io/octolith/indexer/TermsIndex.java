@@ -1,6 +1,7 @@
 package io.octolith.indexer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
@@ -69,6 +70,9 @@ public class TermsIndex {
 				allOccurrences.addOrUpdate(term, fileMatch);
 			}
 		}
+
+		System.out.println("Minden találat:");		
+		allOccurrences.listItems();
 		
 		FileOccurrence bestMatchedOccurrences = allOccurrences.getBestMatched();
 		
@@ -108,5 +112,49 @@ public class TermsIndex {
                         + " [" + Util.join(labels, ", ") + "]");
             }
     	}
+	}
+	
+	public void listAllItems() {
+		for(String term: index.keySet()) {
+			System.out.println(term + ":");
+			for(String filename: index.get(term).keySet()) {
+				System.out.println("\t" + index.get(term).get(filename) + "\t" + filename);
+			}
+		}
+	}
+	
+	public void listItem(String term) {
+		System.out.println(term + ":");
+		for(String filename: index.get(term).keySet()) {
+			System.out.println("\t" + index.get(term).get(filename) + "\t" + filename);
+		}
+	}
+	
+	public void listItems(ArrayList<String> terms) {
+		for(String term: terms) {
+			System.out.println(term + ":");
+			
+			HashMap<String, Integer> files = index.get(term);
+			if(files != null) {
+				for(String filename: files.keySet()) {
+					System.out.println("\t" + files.get(filename) + "\t" + filename);
+				}
+			}
+		}
+	}
+	
+	public void listAllItemsByOccurrence() {
+		
+		ArrayList<TermOccurrence> items = new ArrayList<TermOccurrence>();
+
+		for(String term: index.keySet()) {
+			items.add(new TermOccurrence(term, index.get(term).size()));
+		}
+		
+		Collections.sort(items, Collections.reverseOrder());
+		
+		for(int i = 0; i < 200; i++) {
+			System.out.println(items.get(i).term + " " + items.get(i).numberOfOccurrences);
+		}
 	}
 }

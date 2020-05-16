@@ -21,7 +21,7 @@ public class DirectoryIndexer extends SimpleFileVisitor<Path> {
 		if (attrs.isRegularFile()) {
 			
 			String filename = file.toString();
-            System.out.println("file: " + filename);
+            //System.out.println("file: " + filename);
             
             // initialize new instance of TermRecognizer with stopwords
             TermRecognizer termRecognizer;
