@@ -86,12 +86,15 @@ public class FileOccurrence {
 	}
 	
 	public void listItems() {
-		System.out.println("Tal�latok");
+		System.out.println("Találatok listája:");
+		System.out.println();
 		for(String filename: index.keySet()) {
 			System.out.println(filename + "\t" + getTotalNumberOfOccurrences(filename));
 			for(String term: index.get(filename).keySet()) {
 				System.out.println("\t" + term + "\t" + index.get(filename).get(term));
 			}
 		}
+		System.out.println();
+		System.out.println();
 	}
 }

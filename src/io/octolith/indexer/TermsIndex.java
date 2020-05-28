@@ -1,5 +1,11 @@
 package io.octolith.indexer;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,12 +39,67 @@ public class TermsIndex {
 		}
 	}
 	
+	public void printToFile(String fileName) {
+	    System.out.println("FÃ¡jlba Ã­rÃ¡s");
+        System.out.println(fileName);
+        
+        PrintWriter printWriter = null;
+        try {
+            printWriter = new PrintWriter(new FileWriter(fileName));
+            
+            for(String term: index.keySet()) {
+                printWriter.println(term + "                  " + index.get(term).size());
+                for(String filename: index.get(term).keySet()) {
+                    printWriter.println(filename + "                  " + index.get(term).get(filename));
+                }
+            }
+        } catch (IOException e) {
+            System.out.println(e.getLocalizedMessage());
+            e.printStackTrace();
+        }
+        finally {
+            if(printWriter != null) {
+                printWriter.close();
+            }
+        }
+	    
+	    System.out.println();
+	    System.out.println();
+	}
+	
+	public void readFromFile(String fileName) {
+	    System.out.println("FÃ¡jlbÃ³l olvasÃ¡s");
+        System.out.println(fileName);
+        
+        BufferedReader bufferedReader = null;
+        try {
+            bufferedReader = new BufferedReader(new FileReader(fileName));
+            
+            String currentLine;
+            while ((currentLine = bufferedReader.readLine()) != null && !currentLine.isEmpty()) {
+                String[] termWithNumber = currentLine.split("                  ");
+                int lines = Integer.parseInt(termWithNumber[1]);
+                for(int i = 0; i < lines; i++) {
+                    currentLine = bufferedReader.readLine();
+                    String[] fileNameWithNumber = currentLine.split("                  ");
+                    int occurrences = Integer.parseInt(fileNameWithNumber[1]);
+                    this.addOrUpdateTermWithFileOccurences(termWithNumber[0], fileNameWithNumber[0], occurrences);
+                }
+            }
+            
+            bufferedReader.close();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+	}
+	
 	public FileOccurrence searchExact(ArrayList<String> terms) {
 		HashSet<String> setOfTerms = arrayToSet(terms);
 		
 		FileOccurrence allOccurrences = new FileOccurrence();
 		
-		for(String term: terms) {
+		for(String term: setOfTerms) {
 			HashMap<String, Integer> fileMatch = index.get(term);
 			if(fileMatch != null) {
 				allOccurrences.addOrUpdate(term, fileMatch);
@@ -50,16 +111,29 @@ public class TermsIndex {
 		return exactlyMatchedOccurrences;
 	}
 	
-	public FileOccurrence searchWithSemanticExpansion(ArrayList<String> terms) {
+	public FileOccurrence searchFuzzy(ArrayList<String> terms) {
+        HashSet<String> setOfTerms = arrayToSet(terms);
+        
+        FileOccurrence allOccurrences = new FileOccurrence();
+        
+        for(String term: setOfTerms) {
+            HashMap<String, Integer> fileMatch = index.get(term);
+            if(fileMatch != null) {
+                allOccurrences.addOrUpdate(term, fileMatch);
+            }
+        }
+        
+        return allOccurrences;
+    }
+	
+	public FileOccurrence searchWithSemanticExpansionBestMatched(ArrayList<String> terms) {
 		HashSet<String> setOfTerms = arrayToSet(terms);
 		HashSet<String> semanticExtension = new HashSet<String>();
 		semanticExtension.addAll(setOfTerms);
 		
-		// TODO: expand list of terms
-		
-		// Peldanyositsuk a fenti egyszeru Pellet kovetkezteto osztalyt.
     	for(String term: setOfTerms) {
-    		expandTerm(term);
+    	    ArrayList<String> expandedTerms = expandTerm(term);
+            semanticExtension.addAll(expandedTerms);
     	}
 		
 		FileOccurrence allOccurrences = new FileOccurrence();		
@@ -70,10 +144,7 @@ public class TermsIndex {
 				allOccurrences.addOrUpdate(term, fileMatch);
 			}
 		}
-
-		System.out.println("Minden találat:");		
-		allOccurrences.listItems();
-		
+	
 		FileOccurrence bestMatchedOccurrences = allOccurrences.getBestMatched();
 		
 		return bestMatchedOccurrences;
@@ -89,48 +160,92 @@ public class TermsIndex {
 		return set;
 	}
 	
-	// Beolvassa a pc-shop OWL ontológiát, majd listázza a kulszóhoz tartozó
-	// osztály valamennyi leszármazottját és azok annotációit.
-	private void expandTerm(String term) {
+	// Beolvassa a pc-shop OWL ontolï¿½giï¿½t, majd listï¿½zza a kulszï¿½hoz tartozï¿½
+	// osztï¿½ly valamennyi leszï¿½rmazottjï¿½t ï¿½s azok annotï¿½ciï¿½it.
+	private ArrayList<String> expandTerm(String term) {
 		
+	    ArrayList<String> terms = new ArrayList<String>();
+	    terms.add(term);
+	    
 		ReasoningExample p = new ReasoningExample(
     			PCSHOP_ONTOLOGY_FNAME);
     	
-        // Végezzük keresöszó-kiegészítést a kulcsszóra az osztály leszármazottai szerint!
+        // Vï¿½gezzï¿½k keresï¿½szï¿½-kiegï¿½szï¿½tï¿½st a kulcsszï¿½ra az osztï¿½ly leszï¿½rmazottai szerint!
 
     	Set<OWLClass> descendants = p.getSubClasses(term, false);
-        System.out.println("Query expansion a leszármazottak szerint: ");
+        System.out.println("Query expansion a leszï¿½rmazottak szerint: ");
     	for (OWLClass cls : descendants) {
-    		// Az eredmények közül a beépített OWL entitásokat ki kell szürnünk.
-    		// Ezek itt az osztályhierarchia tetejét és alját jelölö
-    		// "owl:Thing" és "owl:Nothing" lehetnek.
+    		// Az eredmÃ©nyek kÃ¶zÃ¼l a beÃ©pÃ­tett OWL entitÃ¡sokat ki kell szï¿½rnï¿½nk.
+    		// Ezek itt az osztÃ¡lyhierarchia tetejÃ©t Ã©s aljÃ¡t jelÃ¶lÅ‘
+    		// "owl:Thing" Ã©s "owl:Nothing" lehetnek.
     		if (!cls.isBuiltIn()) {
-                // Kérdezzük le az osztály címkéit (annotation rdfs:label).
+                // KÃ©rdezzÃ¼k le az osztÃ¡lyok cÃ­mkÃ©it (annotation rdfs:label).
                 Set<String> labels = p.getClassAnnotations(cls);
     			System.out.println("\t- "
     					+ term + " -> " + cls.getIRI().getFragment()
                         + " [" + Util.join(labels, ", ") + "]");
+    			
+    			terms.add(cls.getIRI().getFragment());
+    			
+    			terms.addAll(labels);
             }
     	}
+    	
+    	return terms;
 	}
 	
+	public FileOccurrence searchWithSemanticExpansionFuzzyMatched(ArrayList<String> terms) {
+        HashSet<String> setOfTerms = arrayToSet(terms);
+        HashSet<String> semanticExtension = new HashSet<String>();
+        semanticExtension.addAll(setOfTerms);
+        
+        // TODO: expand list of terms
+        
+        // Peldanyositsuk a fenti egyszeru Pellet kovetkezteto osztalyt.
+        for(String term: setOfTerms) {
+            ArrayList<String> expandedTerms = expandTerm(term);
+            semanticExtension.addAll(expandedTerms);
+        }
+        
+        FileOccurrence allOccurrences = new FileOccurrence();       
+        
+        for(String term: semanticExtension) {
+            HashMap<String, Integer> fileMatch = index.get(term);
+            if(fileMatch != null) {
+                allOccurrences.addOrUpdate(term, fileMatch);
+            }
+        }
+
+        return allOccurrences;
+    }
+	
 	public void listAllItems() {
+	    System.out.println("Ã–sszes elem listÃ¡zÃ¡sa:");
+	    System.out.println();
 		for(String term: index.keySet()) {
 			System.out.println(term + ":");
 			for(String filename: index.get(term).keySet()) {
 				System.out.println("\t" + index.get(term).get(filename) + "\t" + filename);
 			}
 		}
+		System.out.println();
+		System.out.println();
 	}
 	
 	public void listItem(String term) {
+	    System.out.println("Ã–sszes fÃ¡jl, melyben szerepel az alÃ¡bbi kifejezÃ©s:");
+	    System.out.println();
 		System.out.println(term + ":");
 		for(String filename: index.get(term).keySet()) {
 			System.out.println("\t" + index.get(term).get(filename) + "\t" + filename);
 		}
+		System.out.println();
+		System.out.println();
 	}
 	
 	public void listItems(ArrayList<String> terms) {
+	    System.out.println("Ã–sszes fÃ¡jl, melyben szerepelnek az alÃ¡bbi kifejezÃ©sek:");
+	    System.out.println();
 		for(String term: terms) {
 			System.out.println(term + ":");
 			
@@ -141,9 +256,14 @@ public class TermsIndex {
 				}
 			}
 		}
+		System.out.println();
+		System.out.println();
 	}
 	
 	public void listAllItemsByOccurrence() {
+	    
+	    System.out.println("Ã–sszes szÃ³, elÅ‘fordulÃ¡sok szÃ¡ma szerint:");
+	    System.out.println();
 		
 		ArrayList<TermOccurrence> items = new ArrayList<TermOccurrence>();
 
@@ -156,5 +276,7 @@ public class TermsIndex {
 		for(int i = 0; i < 200; i++) {
 			System.out.println(items.get(i).term + " " + items.get(i).numberOfOccurrences);
 		}
+		System.out.println();
+		System.out.println();
 	}
 }
